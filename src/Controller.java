@@ -1,6 +1,8 @@
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import javafx.collections.FXCollections;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 
@@ -11,50 +13,71 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 
 public class Controller {
+
     HashMap<String, JsonEvent> eventMap = new HashMap<>();
-    public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
+    HashMap<String, String> fileMap = new HashMap<>();
+
     private ObjectMapper mapper = new ObjectMapper();
     private JsonEvent event;
+
+    public ComboBox<String> eventComboBox;
 
     public CheckBox isRoot;
     public TextField title, name;
 
     public ArrayList<TextArea> descList = new ArrayList<>();
     public ArrayList<ChoiceLink> choiceList = new ArrayList<>();
+    public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
 
     public void reset(){
         descList = new ArrayList<>();
         choiceList = new ArrayList<>();
     }
 
-    public void loadEventList(String fileName, Controller controller) {
-        String currPath = new File("").getAbsolutePath();
+    public void loadAllJsonFiles(String path){
+        File currPath = new File(new File(path).getAbsolutePath());
 
-        File eventFile = new File(currPath + "/"+fileName);
+        File[] list = currPath.listFiles();
+        if(list != null) {
+            for (File file : list) {
+                if (file.isDirectory()) {
+                    loadAllJsonFiles(file.getAbsolutePath());
+                } else {
+                    if (file.getPath().endsWith(".json"))
+                        fileMap.put(file.getName(), file.getAbsolutePath());
+                }
+            }
+        }
+    }
+
+    public void loadEventList(String fileName) {
+        File eventFile = new File(fileName);
         if (!eventFile.isDirectory() && eventFile.exists()){
             try {
                 JsonEvent[] events = mapper.readValue(eventFile, JsonEvent[].class);
                 for (JsonEvent evt : events)
-                    controller.eventMap.put(evt.name, evt);
+                    eventMap.put(evt.name, evt);
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+
+        eventComboBox.setItems(FXCollections.observableArrayList(eventMap.keySet()));
     }
 
     /**
      *
      */
-    public void makeIntoPOJO(Controller controller){
+    public void save(){
         event = new JsonEvent();
-        event.root = controller.isRoot.isSelected();
-        event.title = controller.title.getText();
-        event.name = controller.name.getText();
+        event.root = isRoot.isSelected();
+        event.title = title.getText();
+        event.name = name.getText();
 
         /*
          * Record all the descriptions. Only use child 3+
          */
-        ArrayList<TextArea> descList = controller.descList;
+        ArrayList<TextArea> descList = this.descList;
         event.description = new String[descList.size()];
         for(int i=0;i<descList.size();i++) //Record all the text.
             event.description[i] = descList.get(i).getText();
@@ -64,7 +87,7 @@ public class Controller {
          * Record all the choices. Complicated much very.
          */
         int i=0;
-        ArrayList<ChoiceLink> choiceList = controller.choiceList;
+        ArrayList<ChoiceLink> choiceList = this.choiceList;
         event.choices = new String[choiceList.size()];
         for(ChoiceLink link : choiceList){
             ArrayList<String> outcomes = new ArrayList<>();
@@ -82,15 +105,23 @@ public class Controller {
             i++;
         }
 
-        controller.eventMap.put(event.name, event);
-        //writeToJson();
+        event.resultingAction = new ArrayList<>();
+        if(actionList.size() > 0) {
+            for (ArrayList<TextField> list : actionList) {
+                ArrayList<String> paramList = new ArrayList<>();
+                event.resultingAction.add(paramList);
+                paramList.addAll(list.stream().map(TextField::getText).collect(Collectors.toList()));
+            }
+        }
+
+        eventMap.put(event.name, event);
     }
 
-    public void writeToJson(Controller controller, String fileName){
+    public void writeToJson(String fileName){
         try {
             String currPath = new File("").getAbsolutePath();
             mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(currPath+"/"+fileName), controller.eventMap.values());
+            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(currPath+"/"+fileName), eventMap.values());
 
 //            String jsonInString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(event);
         } catch (IOException e) {

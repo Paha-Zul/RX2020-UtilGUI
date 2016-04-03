@@ -42,6 +42,9 @@ public class EventMode {
 
     GridPane actionAreaGrid = new GridPane();
 
+    GridPane topGrid = new GridPane();
+    GridPane bottomGrid = new GridPane();
+
     Controller controller = new Controller();
 
     public void resetGrids(){
@@ -61,8 +64,7 @@ public class EventMode {
 
     public void start(Stage primaryStage) throws Exception{
         this.primaryStage = primaryStage;
-
-        controller.loadEventList("complicated.json", controller);
+        controller.loadAllJsonFiles("");
 
         primaryStage.setTitle("GUI");
 
@@ -81,35 +83,70 @@ public class EventMode {
 
         primaryStage.show();
 
-        addStuff();
+        mainGrid.add(topGrid, 0, 0);
+        mainGrid.add(bottomGrid, 0, 1);
+        addTopGrid();
+        addBottomGrid();
     }
 
-    public void addStuff(){
+    public void addTopGrid(){
         Button switchButton = new Button("Switch");
 
         Text scenetitle = new Text("Events");
         scenetitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        mainGrid.add(scenetitle, 0, 0, 2, 1);
-        mainGrid.add(switchButton, 0, 1);
+        topGrid.add(scenetitle, 0, 0, 2, 1);
+        topGrid.add(switchButton, 0, 1);
 
         GridPane buttonGrid = new GridPane();
-
+        buttonGrid.setVgap(20);
         Button saveButton = new Button("Save");
-        buttonGrid.add(saveButton, 1, 0);
-
         Button newButton = new Button("Clear");
-        buttonGrid.add(newButton, 2, 0);
-
         Button removeButton = new Button("Remove");
-        buttonGrid.add(removeButton, 3, 0);
-
         Button loadButton = new Button("Load");
+
+        GridPane loadFileGrid = new GridPane();
+        ObservableList<String> options = FXCollections.observableArrayList(asSortedList(controller.fileMap.keySet()));
+        ComboBox<String> fileDropList = new ComboBox<>(options);
+        Button loadFileButton = new Button("Load File");
+
+        loadFileGrid.add(fileDropList, 0, 0);
+        loadFileGrid.add(loadFileButton, 1, 0);
+
+        options = FXCollections.observableArrayList(asSortedList(controller.eventMap.keySet()));
+        controller.eventComboBox = new ComboBox<>(options);
+
+        buttonGrid.add(saveButton, 1, 0);
+        buttonGrid.add(newButton, 2, 0);
+        buttonGrid.add(removeButton, 3, 0);
         buttonGrid.add(loadButton, 4, 0);
+        buttonGrid.add(controller.eventComboBox, 5, 0);
+        buttonGrid.add(loadFileGrid, 0, 1, 10, 1);
 
-        ObservableList<String> options = FXCollections.observableArrayList(asSortedList(controller.eventMap.keySet()));
-        final ComboBox<String> comboBox = new ComboBox<>(options);
-        buttonGrid.add(comboBox, 5, 0);
+        topGrid.add(buttonGrid, 0, 2, 99, 1);
 
+        saveButton.setOnAction((ActionEvent e) -> {
+            controller.save();
+            controller.writeToJson("complicated.json");
+            controller.loadEventList("complicated.json");
+            controller.eventComboBox.setItems(FXCollections.observableArrayList(asSortedList(controller.eventMap.keySet())));
+        });
+
+        loadButton.setOnAction((ActionEvent e) -> loadEvent(controller.eventComboBox.getValue()));
+        newButton.setOnAction((ActionEvent e) -> reset());
+        loadFileButton.setOnAction((ActionEvent e) -> controller.loadEventList(controller.fileMap.get(fileDropList.getValue())));
+
+        switchButton.setOnAction(e -> {clean();
+            try {
+                new SearchActivityMode().start(primaryStage);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        });
+
+        removeButton.setDisable(true);
+    }
+
+    public void addBottomGrid(){
         Label root = new Label("Root:");
 
         controller.isRoot = new CheckBox();
@@ -124,54 +161,30 @@ public class EventMode {
         controller.name = new TextField();
         controller.name.setMaxWidth(200);
 
-        mainGrid.add(buttonGrid, 0, 2, 99, 1);
-        mainGrid.add(root, 0, 3);
-        mainGrid.add(controller.isRoot, 1, 3);
-        mainGrid.add(title, 0, 4);
-        mainGrid.add(controller.title, 1, 4);
-        mainGrid.add(nameLabel, 0, 5);
-        mainGrid.add(controller.name, 1, 5);
-        mainGrid.add(descGrid, 0, 6);
-        GridPane.setColumnSpan(descGrid, 3);
-        mainGrid.add(choiceGrid, 0, 7);
-        GridPane.setColumnSpan(choiceGrid, 3);
-        mainGrid.add(actionAreaGrid, 0, 8, 99, 1);
+        bottomGrid.add(root, 0, 3);
+        bottomGrid.add(controller.isRoot, 1, 3);
+        bottomGrid.add(title, 0, 4);
+        bottomGrid.add(controller.title, 1, 4);
+        bottomGrid.add(nameLabel, 0, 5);
+        bottomGrid.add(controller.name, 1, 5);
+        bottomGrid.add(descGrid, 0, 6, 3, 1);
+        bottomGrid.add(choiceGrid, 0, 7, 3, 1);
+        bottomGrid.add(actionAreaGrid, 0, 8, 99, 1);
 
         descriptionArea();
         choicesArea();
         actionArea();
-
-        saveButton.setOnAction((ActionEvent e) -> {
-            controller.makeIntoPOJO(controller);
-            controller.writeToJson(controller, "complicated.json");
-            controller.loadEventList("complicated.json", controller);
-            comboBox.setItems(FXCollections.observableArrayList(asSortedList(controller.eventMap.keySet())));
-        });
-
-        loadButton.setOnAction((ActionEvent e) -> loadEvent(comboBox.getValue()));
-        newButton.setOnAction((ActionEvent e) -> reset());
-
-        switchButton.setOnAction(e -> {clean();
-            try {
-                new SearchActivityMode().start(primaryStage);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
-        });
-
-//        writeButton.setDisable(true);
-        removeButton.setDisable(true);
     }
 
     void clean(){
         mainGrid.getChildren().clear();
-        controller.reset();
-        resetGrids();
     }
 
     void reset(){
-        clean();
-        addStuff();
+        bottomGrid.getChildren().clear();
+        controller.reset();
+        resetGrids();
+        addBottomGrid();
     }
 
     void loadEvent(String name){
@@ -203,6 +216,16 @@ public class EventMode {
 
                     link.outcomeList.get(j).setText(event.outcomes.get(i).get(j));
                     link.chanceList.get(j).setText(event.chances.get(i).get(j).toString());
+                }
+            }
+        }
+
+        ArrayList<ArrayList<String>> actionList = event.resultingAction;
+        if(actionList != null) {
+            for (ArrayList<String> list : actionList) {
+                GridPane[] grids = addAnotherAction();
+                for(String param : list){
+                    addAnotherActionTextField(grids[2]).setText(param);
                 }
             }
         }

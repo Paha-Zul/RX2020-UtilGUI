@@ -13,21 +13,40 @@ import java.util.stream.Collectors;
  * Created by Paha on 4/2/2016.
  */
 public class ActivityController {
+
     public TextField nameField;
     public TextField buttonTitleField;
     public TextArea descTextArea;
     public ComboBox<String> activityComboBox;
+
     public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
 
     public HashMap<String, SearchActivityJSON> activityMap = new HashMap<>();
-    private ObjectMapper mapper = new ObjectMapper();
-    private File file;
+    HashMap<String, String> fileMap = new HashMap<>();
 
-    public void setFile(File file){
-        this.file = file;
+    private ObjectMapper mapper = new ObjectMapper();
+
+    private File currFile;
+
+    public void loadAllJsonFiles(String path){
+        File currPath = new File(new File(path).getAbsolutePath());
+
+        File[] list = currPath.listFiles();
+        if(list != null) {
+            for (File file : list) {
+                if (file.isDirectory()) {
+                    loadAllJsonFiles(file.getAbsolutePath());
+                } else {
+                    if (file.getPath().endsWith(".json"))
+                        fileMap.put(file.getName(), file.getAbsolutePath());
+                }
+            }
+        }
     }
 
-    public void loadSearchActivities(){
+    public boolean loadSearchActivities(String fileName){
+        File file = new File(fileName);
+        this.currFile = file;
         try {
             SearchActivityJSON[] activityJSONs = mapper.readValue(file, SearchActivityJSON[].class);
             for(SearchActivityJSON act : activityJSONs)
@@ -35,7 +54,10 @@ public class ActivityController {
 
         } catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
+
+        return true;
     }
 
     public void save(){
@@ -53,7 +75,7 @@ public class ActivityController {
         activityMap.put(act.name, act);
 
         try {
-            mapper.writerWithDefaultPrettyPrinter().writeValue(file, activityMap.values());
+            mapper.writerWithDefaultPrettyPrinter().writeValue(this.currFile, activityMap.values());
         } catch (IOException e) {
             e.printStackTrace();
         }

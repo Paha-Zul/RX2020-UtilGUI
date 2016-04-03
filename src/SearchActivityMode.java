@@ -16,7 +16,6 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -26,14 +25,18 @@ import java.util.List;
  */
 public class SearchActivityMode {
     Stage primaryStage;
+
     GridPane mainGrid = new GridPane();
     GridPane actionAreaGrid = new GridPane();
+    GridPane topGrid = new GridPane();
+    GridPane bottomGrid = new GridPane();
 
     int actionAreaCounter = 0;
 
     ActivityController controller = new ActivityController();
 
     public void start(Stage primaryStage) throws Exception{
+        controller.loadAllJsonFiles("");
         this.primaryStage = primaryStage;
         primaryStage.setTitle("GUI");
 
@@ -52,33 +55,73 @@ public class SearchActivityMode {
 
         primaryStage.show();
 
-        addStuff();
+        mainGrid.add(topGrid, 0, 0);
+        mainGrid.add(bottomGrid, 0, 1);
+        addTopGrid();
+        addBottomGrid();
     }
 
-    public void addStuff(){
-        controller.setFile(new File(new File("").getAbsolutePath()+"/"+"searchActivities.json"));
-        controller.loadSearchActivities();
-
+    public void addTopGrid(){
         Button switchButton = new Button("Switch");
 
         Text scenetitle = new Text("Search Activities");
         scenetitle.setFont(Font.font("Tahoma", FontWeight.NORMAL, 20));
-        mainGrid.add(scenetitle, 0, 0, 2, 1);
-        mainGrid.add(switchButton, 0, 1);
+        topGrid.add(scenetitle, 0, 0, 2, 1);
+        topGrid.add(switchButton, 0, 1);
 
         GridPane buttonGrid = new GridPane();
 
         Button saveButton = new Button("Save");
         Button clearButton = new Button("Clear");
         Button loadButton = new Button("Load");
+
+        GridPane loadFileGrid = new GridPane();
+        Label statusLabel = new Label("");
+        ObservableList<String> options = FXCollections.observableArrayList(asSortedList(controller.fileMap.keySet()));
+        ComboBox<String> fileDropList = new ComboBox<>(options);
+        Button loadFileButton = new Button("Load File");
+
+        loadFileGrid.add(fileDropList, 0,0);
+        loadFileGrid.add(loadFileButton, 1, 0);
+        loadFileGrid.add(statusLabel, 2, 0);
+
         ObservableList<String> list = FXCollections.observableArrayList(asSortedList(controller.activityMap.keySet()));
         controller.activityComboBox = new ComboBox<>(list);
 
         buttonGrid.add(saveButton, 0, 0);
         buttonGrid.add(clearButton, 1, 0);
         buttonGrid.add(loadButton, 2, 0);
+        buttonGrid.setVgap(20);
         buttonGrid.add(controller.activityComboBox, 3, 0);
+        buttonGrid.add(loadFileGrid, 0, 1, 10, 1);
 
+        topGrid.add(buttonGrid, 0, 2);
+
+        saveButton.setOnAction(ae -> controller.save());
+        clearButton.setOnAction(ae -> reset());
+        loadButton.setOnAction(ae -> loadActivityIntoGUI());
+
+        loadFileButton.setOnAction(e -> {
+            boolean status = true;
+            status = controller.loadSearchActivities(controller.fileMap.get(fileDropList.getValue()));
+            if(status) {
+                controller.activityComboBox.setItems(FXCollections.observableArrayList(asSortedList(controller.activityMap.keySet())));
+                statusLabel.setText("Loaded!");
+            }else
+                statusLabel.setText("Wrong json file");
+
+        });
+
+        switchButton.setOnAction(e -> {clean();
+            try {
+                new EventMode().start(primaryStage);
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        });
+    }
+
+    public void addBottomGrid(){
         Label nameLabel = new Label("Name:");
         controller.nameField = new TextField();
         controller.nameField.setMaxWidth(200);
@@ -100,40 +143,27 @@ public class SearchActivityMode {
         actionAreaGrid.add(lessButton, 1, 0);
         actionAreaGrid.add(moreButton, 2, 0);
 
-        mainGrid.add(buttonGrid, 0, 2);
-        mainGrid.add(nameLabel, 0, 3);
-        mainGrid.add(controller.nameField, 0, 4);
-        mainGrid.add(buttonTitleLabel, 0, 5);
-        mainGrid.add(controller.buttonTitleField, 0, 6);
-        mainGrid.add(descLabel, 0, 7);
-        mainGrid.add(controller.descTextArea, 0, 8);
-        mainGrid.add(actionAreaGrid, 0, 9);
+        bottomGrid.add(nameLabel, 0, 3);
+        bottomGrid.add(controller.nameField, 0, 4);
+        bottomGrid.add(buttonTitleLabel, 0, 5);
+        bottomGrid.add(controller.buttonTitleField, 0, 6);
+        bottomGrid.add(descLabel, 0, 7);
+        bottomGrid.add(controller.descTextArea, 0, 8);
+        bottomGrid.add(actionAreaGrid, 0, 9);
 
         moreButton.setOnAction(e -> addAnotherAction());
         lessButton.setOnAction(e -> removeAction());
-
-        saveButton.setOnAction(ae -> controller.save());
-        clearButton.setOnAction(ae -> reset());
-        loadButton.setOnAction(ae -> loadActivityIntoGUI());
-
-        switchButton.setOnAction(e -> {clean();
-            try {
-                new EventMode().start(primaryStage);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-            }
-        });
     }
 
     public void clean(){
         mainGrid.getChildren().clear();
-        actionAreaGrid = new GridPane();
-        actionAreaCounter = 0;
     }
 
     void reset(){
-        clean();
-        addStuff();
+        bottomGrid.getChildren().clear();
+        actionAreaGrid = new GridPane();
+        actionAreaCounter = 0;
+        addBottomGrid();
     }
 
     public void loadActivityIntoGUI(){
@@ -141,7 +171,7 @@ public class SearchActivityMode {
         ActivityController.SearchActivityJSON act = controller.activityMap.get(controller.activityComboBox.getValue());
 
         controller.actionList = new ArrayList<>();
-        clean();
+        reset();
 
         controller.nameField.setText(act.name);
         controller.buttonTitleField.setText(act.buttonTitle);
