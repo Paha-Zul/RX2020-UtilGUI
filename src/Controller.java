@@ -20,18 +20,21 @@ public class Controller {
     private ObjectMapper mapper = new ObjectMapper();
     private JsonEvent event;
 
-    public ComboBox<String> eventComboBox;
+    public ComboBox<String> eventComboBox, fileComboBox;
 
     public CheckBox isRoot;
-    public TextField title, name;
+    public TextField titleTextField, nameTextField;
 
     public ArrayList<TextArea> descList = new ArrayList<>();
     public ArrayList<ChoiceLink> choiceList = new ArrayList<>();
     public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
 
+    private File loadedFile;
+
     public void reset(){
         descList = new ArrayList<>();
         choiceList = new ArrayList<>();
+        actionList = new ArrayList<>();
     }
 
     public void loadAllJsonFiles(String path){
@@ -51,10 +54,12 @@ public class Controller {
     }
 
     public void loadEventList(String fileName) {
-        File eventFile = new File(fileName);
-        if (!eventFile.isDirectory() && eventFile.exists()){
+        eventMap = new HashMap<>(); //Reset the event map.
+        loadedFile = new File(fileName); //Set the loaded file.
+
+        if (!loadedFile.isDirectory() && loadedFile.exists() && loadedFile.length() > 0){
             try {
-                JsonEvent[] events = mapper.readValue(eventFile, JsonEvent[].class);
+                JsonEvent[] events = mapper.readValue(loadedFile, JsonEvent[].class);
                 for (JsonEvent evt : events)
                     eventMap.put(evt.name, evt);
             } catch (IOException e) {
@@ -62,7 +67,7 @@ public class Controller {
             }
         }
 
-        eventComboBox.setItems(FXCollections.observableArrayList(eventMap.keySet()));
+        eventComboBox.setItems(FXCollections.observableArrayList(EventMode.asSortedList(eventMap.keySet())));
     }
 
     /**
@@ -71,8 +76,8 @@ public class Controller {
     public void save(){
         event = new JsonEvent();
         event.root = isRoot.isSelected();
-        event.title = title.getText();
-        event.name = name.getText();
+        event.title = titleTextField.getText();
+        event.name = nameTextField.getText();
 
         /*
          * Record all the descriptions. Only use child 3+
@@ -87,20 +92,40 @@ public class Controller {
          * Record all the choices. Complicated much very.
          */
         int i=0;
-        ArrayList<ChoiceLink> choiceList = this.choiceList;
-        event.choices = new String[choiceList.size()];
-        for(ChoiceLink link : choiceList){
+        ArrayList<ChoiceLink> choiceLinkList = this.choiceList;
+
+        //If the link is
+        if(choiceLinkList.size() == 1 && choiceLinkList.get(0).choiceText.getText().isEmpty())
+            event.choices = new String[0];
+        else{
+            event.choices = new String[choiceLinkList.size()];
+        }
+
+        for(ChoiceLink link : choiceLinkList){
             ArrayList<String> outcomes = new ArrayList<>();
             ArrayList<Integer> chances = new ArrayList<>();
-            ArrayList<String> actions = new ArrayList<>();
 
-            event.choices[i] = link.choiceText.getText();
-            outcomes.addAll(link.outcomeList.stream().map(TextField::getText).collect(Collectors.toList()));
-            chances.addAll(link.chanceList.stream().map(field -> Integer.parseInt(field.getText())).collect(Collectors.toList()));
+            if(event.choices.length > i)
+                event.choices[i] = link.choiceText.getText();
+
+            for(TextField outcomeField : link.outcomeList){
+                if(!outcomeField.getText().isEmpty())
+                    outcomes.add(outcomeField.getText());
+            }
+
+            for(TextField chanceField : link.chanceList){
+                int value = 0;
+                try{
+                    value = Integer.parseInt(chanceField.getText());
+                }catch (NumberFormatException e){
+//                    e.printStackTrace();
+                }
+
+                chances.add(value);
+            }
 
             event.outcomes.add(outcomes);
             event.chances.add(chances);
-            event.resultingAction.add(actions);
 
             i++;
         }
@@ -117,11 +142,10 @@ public class Controller {
         eventMap.put(event.name, event);
     }
 
-    public void writeToJson(String fileName){
+    public void writeToJson(){
         try {
-            String currPath = new File("").getAbsolutePath();
             mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-            mapper.writerWithDefaultPrettyPrinter().writeValue(new File(currPath+"/"+fileName), eventMap.values());
+            mapper.writerWithDefaultPrettyPrinter().writeValue(loadedFile, eventMap.values());
 
 //            String jsonInString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(event);
         } catch (IOException e) {
