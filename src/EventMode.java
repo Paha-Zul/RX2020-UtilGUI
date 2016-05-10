@@ -21,8 +21,6 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,27 +34,33 @@ public class EventMode {
     int choiceCol = 0;
     int choiceCounter = 0;
     int actionAreaCounter = 0;
+    int restrictionAreaCounter = 0;
 
     GridPane mainGrid = new GridPane();
     GridPane descGrid = new GridPane();
 
+//    GridPane restrictionGrid = new GridPane();
+//    GridPane restrictionsListGrid = new GridPane();
+
     GridPane choiceGrid = new GridPane();
-    GridPane choiceTextGrid = new GridPane();
+    GridPane choiceListGrid = new GridPane();
 
     GridPane actionAreaGrid = new GridPane();
 
     GridPane topGrid = new GridPane();
     GridPane bottomGrid = new GridPane();
 
-    Controller controller = new Controller();
+    EventController eventController = new EventController();
 
     public void resetGrids(){
         descGrid = new GridPane();
 
         choiceGrid = new GridPane();
-        choiceTextGrid = new GridPane();
+        choiceListGrid = new GridPane();
 
         actionAreaGrid = new GridPane();
+//        restrictionGrid = new GridPane();
+//        restrictionsListGrid = new GridPane();
 
         descNumRow = 0;
         choiceRow = 0;
@@ -67,7 +71,7 @@ public class EventMode {
 
     public void start(Stage primaryStage) throws Exception{
         this.primaryStage = primaryStage;
-        controller.loadAllJsonFiles("");
+        eventController.loadAllJsonFiles("");
 
         primaryStage.setTitle("GUI");
 
@@ -78,7 +82,7 @@ public class EventMode {
 
         ScrollPane sp = new ScrollPane();
         sp.setContent(mainGrid);
-        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sp.setHbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         sp.setVbarPolicy(ScrollPane.ScrollBarPolicy.ALWAYS);
 
         Scene scene = new Scene(sp, 400, 600);
@@ -105,37 +109,39 @@ public class EventMode {
         Button saveButton = new Button("Save");
         Button newButton = new Button("Clear");
         Button removeButton = new Button("Remove");
+        Button replaceButton = new Button("Replace");
         Button loadButton = new Button("Load");
 
         GridPane loadFileGrid = new GridPane();
-        ObservableList<String> options = FXCollections.observableArrayList(asSortedList(controller.fileMap.keySet()));
-        controller.fileComboBox = new ComboBox<>(options);
+        ObservableList<String> options = FXCollections.observableArrayList(Helper.asSortedList(eventController.fileMap.keySet()));
+        eventController.fileComboBox = new ComboBox<>(options);
         Button loadFileButton = new Button("Load File");
 
-        loadFileGrid.add(controller.fileComboBox, 0, 0);
+        loadFileGrid.add(eventController.fileComboBox, 0, 0);
         loadFileGrid.add(loadFileButton, 1, 0);
 
-        options = FXCollections.observableArrayList(asSortedList(controller.eventMap.keySet()));
-        controller.eventComboBox = new ComboBox<>(options);
+        options = FXCollections.observableArrayList(Helper.asSortedList(eventController.eventMap.keySet()));
+        eventController.eventComboBox = new ComboBox<>(options);
 
         buttonGrid.add(saveButton, 1, 0);
         buttonGrid.add(newButton, 2, 0);
         buttonGrid.add(removeButton, 3, 0);
-        buttonGrid.add(loadButton, 4, 0);
-        buttonGrid.add(controller.eventComboBox, 5, 0);
+        buttonGrid.add(replaceButton, 4, 0);
+        buttonGrid.add(loadButton, 5, 0);
+        buttonGrid.add(eventController.eventComboBox, 6, 0);
         buttonGrid.add(loadFileGrid, 0, 1, 10, 1);
 
         topGrid.add(buttonGrid, 0, 2, 99, 1);
 
         saveButton.setOnAction((ActionEvent e) -> {
-            controller.save();
-            controller.writeToJson();
-            controller.loadEventList(controller.fileMap.get(controller.fileComboBox.getValue()));
+            eventController.save();
+            eventController.writeToJson();
+            eventController.loadEventList(eventController.fileMap.get(eventController.fileComboBox.getValue()));
         });
 
-        loadButton.setOnAction((ActionEvent e) -> loadEvent(controller.eventComboBox.getValue()));
+        loadButton.setOnAction((ActionEvent e) -> loadEvent(eventController.eventComboBox.getValue()));
         newButton.setOnAction((ActionEvent e) -> reset());
-        loadFileButton.setOnAction((ActionEvent e) -> controller.loadEventList(controller.fileMap.get(controller.fileComboBox.getValue())));
+        loadFileButton.setOnAction((ActionEvent e) -> eventController.loadEventList(eventController.fileMap.get(eventController.fileComboBox.getValue())));
 
         switchButton.setOnAction(e -> {clean();
             try {
@@ -145,24 +151,43 @@ public class EventMode {
             }
         });
 
+        replaceButton.setOnAction(e -> {
+            if(!eventController.nameTextField.getText().isEmpty())
+                createReplacementAlert();
+        });
+
         removeButton.setOnAction(e -> {
-            if(!controller.nameTextField.getText().isEmpty())
-                createAlert();
+            if(!eventController.nameTextField.getText().isEmpty())
+                createDeletionAlert();
         });
     }
 
-    public void createAlert(){
+    public void createDeletionAlert(){
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle("Confirmation Dialog");
-        alert.setHeaderText("About to delete "+controller.nameTextField.getText()+".");
+        alert.setHeaderText("About to delete "+ eventController.nameTextField.getText()+".");
         alert.setContentText("Are you ok with this?");
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.get() == ButtonType.OK){
-            controller.eventMap.remove(controller.nameTextField.getText());
+            eventController.eventMap.remove(eventController.nameTextField.getText());
             reset();
-            controller.writeToJson();
-            controller.loadEventList(controller.fileMap.get(controller.fileComboBox.getValue()));
+            eventController.writeToJson();
+            eventController.loadEventList(eventController.fileMap.get(eventController.fileComboBox.getValue()));
+        } else {
+            alert.close();
+        }
+    }
+
+    public void createReplacementAlert(){
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Confirmation Dialog");
+        alert.setHeaderText("About to replace "+ eventController.eventComboBox.getValue()+" with "+ eventController.nameTextField.getText());
+        alert.setContentText("Are you ok with this?");
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.get() == ButtonType.OK){
+            eventController.replace();
         } else {
             alert.close();
         }
@@ -171,31 +196,33 @@ public class EventMode {
     public void addBottomGrid(){
         Label root = new Label("Root:");
 
-        controller.isRoot = new CheckBox();
+        eventController.isRoot = new CheckBox();
 
         Label title = new Label("Title:");
 
-        controller.titleTextField = new TextField();
-        controller.titleTextField.setMaxWidth(200);
+        eventController.titleTextField = new TextField();
+        eventController.titleTextField.setMaxWidth(200);
 
         Label nameLabel = new Label("Name:");
 
-        controller.nameTextField = new TextField();
-        controller.nameTextField.setMaxWidth(200);
+        eventController.nameTextField = new TextField();
+        eventController.nameTextField.setMaxWidth(200);
 
         bottomGrid.add(root, 0, 3);
-        bottomGrid.add(controller.isRoot, 1, 3);
+        bottomGrid.add(eventController.isRoot, 1, 3);
         bottomGrid.add(title, 0, 4);
-        bottomGrid.add(controller.titleTextField, 1, 4);
+        bottomGrid.add(eventController.titleTextField, 1, 4);
         bottomGrid.add(nameLabel, 0, 5);
-        bottomGrid.add(controller.nameTextField, 1, 5);
+        bottomGrid.add(eventController.nameTextField, 1, 5);
         bottomGrid.add(descGrid, 0, 6, 3, 1);
         bottomGrid.add(choiceGrid, 0, 7, 3, 1);
         bottomGrid.add(actionAreaGrid, 0, 8, 99, 1);
+//        bottomGrid.add(restrictionGrid, 0, 9, 99, 1);
 
         descriptionArea();
         choicesArea();
         actionArea();
+//        setupRestrictionArea();
     }
 
     void clean(){
@@ -204,32 +231,37 @@ public class EventMode {
 
     void reset(){
         bottomGrid.getChildren().clear();
-        controller.reset();
+        eventController.reset();
         resetGrids();
         addBottomGrid();
     }
 
     void loadEvent(String name){
         reset();
-        Controller.JsonEvent event = controller.eventMap.get(name);
+        EventController.JsonEvent event = eventController.eventMap.get(name);
 
-        controller.isRoot.setSelected(event.root);
-        controller.titleTextField.setText(event.title);
-        controller.nameTextField.setText(event.name);
+        eventController.isRoot.setSelected(event.root);
+        eventController.titleTextField.setText(event.title);
+        eventController.nameTextField.setText(event.name);
 
         for(int i=0;i<event.description.length;i++){
             if(i==0){
-                controller.descList.get(i).setText(event.description[i]);
+                eventController.descList.get(i).setText(event.description[i]);
             }else{
                 addDescriptionArea();
-                controller.descList.get(i).setText(event.description[i]);
+                eventController.descList.get(i).setText(event.description[i]);
             }
         }
 
-        for(int i=0;i<event.choices.length;i++){
+        //Since we can have an outcome(s) without a choice, choose the correct loop to limit.
+        int size = Integer.max(event.choices.length, event.outcomes.size());
+
+        for(int i=0;i<size;i++){
             GridPane[] grids = addNewChoiceArea();
-            ChoiceLink link = controller.choiceList.get(i);
-            link.choiceText.setText(event.choices[i]);
+            ChoiceLink link = eventController.choiceList.get(i);
+            //The choice may not exist so check here.
+            if(event.choices.length > i)
+                link.choiceText.setText(event.choices[i]);
 
             if(event.outcomes.size() >= i) {
                 for (int j = 0; j < event.outcomes.get(i).size(); j++) {
@@ -237,10 +269,15 @@ public class EventMode {
                     if(j != 0) {
                         addOutcomeTextBox(grids[1]);
                         addAnotherChance(grids[2]);
+                        addAnotherRestriction(grids[3]);
                     }
 
                     link.outcomeList.get(j).setText(event.outcomes.get(i).get(j));
-                    link.chanceList.get(j).setText(event.chances.get(i).get(j).toString());
+                    if(event.chances.size() > 0)
+                        link.chanceList.get(j).setText(event.chances.get(i).get(j).toString());
+
+                    if(event.restrictions.size() > j)
+                        link.restrictionList.get(j).setText(event.restrictions.get(i).get(j));
                 }
             }
         }
@@ -281,7 +318,7 @@ public class EventMode {
         descNumRow++;
 
         TextArea descBox = new TextArea();
-        controller.descList.add(descBox);
+        eventController.descList.add(descBox);
         descBox.setMaxWidth(200);
         descBox.setWrapText(true);
         descGrid.add(descBox, 1, descNumRow);
@@ -292,13 +329,14 @@ public class EventMode {
     void removeDescriptionArea(){
         ObservableList<Node> list = descGrid.getChildren();
         list.remove(list.size()-1);
+        eventController.descList.remove(eventController.descList.size()-1);
 
         descNumRow--;
     }
 
     void choicesArea(){
         GridPane labelButtonGrid = new GridPane();
-//        choiceTextGrid.setGridLinesVisible(true);
+//        choiceListGrid.setGridLinesVisible(true);
 
         Label desc = new Label("Choices:");
         labelButtonGrid.add(desc, 0, 0);
@@ -316,7 +354,7 @@ public class EventMode {
         });
 
         choiceGrid.add(labelButtonGrid, 0, 0);
-        choiceGrid.add(choiceTextGrid, 0, 1);
+        choiceGrid.add(choiceListGrid, 0, 1);
     }
 
     /**
@@ -327,33 +365,35 @@ public class EventMode {
         TextField choiceBox = new TextField();
         choiceBox.setMaxWidth(100);
 
-        controller.choiceList.add(new ChoiceLink());
+        eventController.choiceList.add(new ChoiceLink());
 
         GridPane choiceBoxGrid = addChoiceBox();
+        GridPane[] outcomeGrid = createOutcomeArea();
 
-        GridPane chancesGrid = createChancesArea();
-        chancesGrid.setUserData(choiceCounter++);
-        addAnotherChance(chancesGrid);
+        outcomeGrid[2].setUserData(choiceCounter++); //Set the user data of the chance grid
 
-        GridPane[] outcomeGrid = createOutcomeArea(chancesGrid);
+        addAnotherChance(outcomeGrid[2]); //Adds the first chance
+        addOutcomeTextBox(outcomeGrid[1]); //Adds the first outcome
+        addAnotherRestriction(outcomeGrid[3]); //Adds the first restriction
 
-        choiceTextGrid.add(choiceBoxGrid, choiceCol, choiceRow++); //Add the choice text box
-        choiceTextGrid.add(outcomeGrid[0], 0, choiceRow++); //Add the outcome area
-        choiceTextGrid.add(chancesGrid, 0, choiceRow++); //Add the chances area.
+        choiceListGrid.add(choiceBoxGrid, choiceCol, choiceRow++); //Add the choice text box
+        choiceListGrid.add(outcomeGrid[0], 0, choiceRow++); //Add the outcome area
+        choiceListGrid.add(outcomeGrid[2], 0, choiceRow++); //Add the chances area.
+        choiceListGrid.add(outcomeGrid[3], 0, choiceRow++); //Add the restriction area.
         choiceCol=0;
 
-        return new GridPane[]{choiceBoxGrid, outcomeGrid[1], chancesGrid};
+        return new GridPane[]{choiceBoxGrid, outcomeGrid[1], outcomeGrid[2], outcomeGrid[3]};
     }
 
     void removeChoiceArea(){
-        ObservableList<Node> list = choiceTextGrid.getChildren();
+        ObservableList<Node> list = choiceListGrid.getChildren();
         list.remove(list.size() - 1);
         list.remove(list.size() - 1);
         list.remove(list.size() - 1);
 
         choiceCounter--;
 
-        controller.choiceList.remove(controller.choiceList.size()-1);
+        eventController.choiceList.remove(eventController.choiceList.size()-1);
         choiceRow-=3;
     }
 
@@ -369,7 +409,7 @@ public class EventMode {
         TextField choiceTextField = new TextField();
         choiceTextField.setMaxWidth(100);
 
-        controller.choiceList.get(controller.choiceList.size()-1).choiceText = choiceTextField;
+        eventController.choiceList.get(eventController.choiceList.size()-1).choiceText = choiceTextField;
 
         grid.add(choiceLabel, 0, 0);
         grid.add(choiceTextField, 0, 1);
@@ -377,18 +417,23 @@ public class EventMode {
         return grid;
     }
 
-    GridPane[] createOutcomeArea(GridPane chancesGrid){
+    /**
+     *
+     * @return A GridPane array of the main outcome grid, outcome text field grid (for input), chances grid, restriction grid
+     */
+    GridPane[] createOutcomeArea(){
         GridPane outcomeGrid = new GridPane();
         outcomeGrid.setPadding(new Insets(0, 0, 0, 0));
 
         GridPane labelButtonGrid = new GridPane();
         GridPane outcomeTextBoxGrid = new GridPane();
+        GridPane chancesGrid = createChancesArea();
+        GridPane restrictionGrid = createRestrictionArea();
+
         outcomeTextBoxGrid.setUserData(choiceCounter);
 
         Label desc = new Label("Outcomes:");
         labelButtonGrid.add(desc, 0, 0);
-
-        addOutcomeTextBox(outcomeTextBoxGrid);
 
         Button lessButton = new Button("-");
         labelButtonGrid.add(lessButton, 2, 0);
@@ -400,12 +445,14 @@ public class EventMode {
         addMoreButton.setOnAction((ActionEvent e) -> {
             addOutcomeTextBox(outcomeTextBoxGrid);
             addAnotherChance(chancesGrid);
+            addAnotherRestriction(restrictionGrid);
         });
 
         //Remove an outcome box and chance box.
         lessButton.setOnAction((ActionEvent e) -> {
             removeOutcomeTextBox(outcomeTextBoxGrid);
             removeAnotherChance(chancesGrid);
+            removeRestrictionArea(restrictionGrid);
         });
 
         outcomeGrid.add(labelButtonGrid, 0, 0);
@@ -413,7 +460,7 @@ public class EventMode {
 
         GridPane.setColumnSpan(outcomeGrid, 20);
 
-        return new GridPane[]{outcomeGrid, outcomeTextBoxGrid};
+        return new GridPane[]{outcomeGrid, outcomeTextBoxGrid, chancesGrid, restrictionGrid};
     }
 
     /**
@@ -421,12 +468,11 @@ public class EventMode {
      * @param outcomeTextBoxGrid
      */
     TextField addOutcomeTextBox(GridPane outcomeTextBoxGrid){
-
         TextField outcomeTextBox = new TextField();
         outcomeTextBox.setMaxWidth(100);
         outcomeTextBoxGrid.add(outcomeTextBox, outcomeTextBoxGrid.getChildrenUnmodifiable().size(), 0);
 
-        controller.choiceList.get((int)outcomeTextBoxGrid.getUserData()-1).outcomeList.add(outcomeTextBox);
+        eventController.choiceList.get((int)outcomeTextBoxGrid.getUserData()).outcomeList.add(outcomeTextBox);
 
         return outcomeTextBox;
     }
@@ -434,7 +480,7 @@ public class EventMode {
     void removeOutcomeTextBox(GridPane outcomeTextBoxGrid){
         ObservableList<Node> list = outcomeTextBoxGrid.getChildren();
         if(list.size() > 1) {
-            controller.choiceList.get((int)outcomeTextBoxGrid.getUserData()-1).outcomeList.remove(list.size()-1);
+            eventController.choiceList.get((int)outcomeTextBoxGrid.getUserData()).outcomeList.remove(list.size()-1);
             list.remove(list.size() - 1);
         }
     }
@@ -442,7 +488,7 @@ public class EventMode {
     GridPane createChancesArea(){
         GridPane chanceGrid = new GridPane();
 
-        chanceGrid.setPadding(new Insets(0, 0, 20, 0));
+        chanceGrid.setPadding(new Insets(0, 0, 0, 0));
 
         Label desc = new Label("Chances:");
         chanceGrid.add(desc, 0, 0);
@@ -460,7 +506,7 @@ public class EventMode {
         chanceBox.setMaxWidth(100);
         chanceTextBoxGrid.add(chanceBox, chanceTextBoxGrid.getChildren().size()-1, 1);
 
-        controller.choiceList.get(controller.choiceList.size()-1).chanceList.add(chanceBox);
+        eventController.choiceList.get(eventController.choiceList.size()-1).chanceList.add(chanceBox);
     }
 
     /**
@@ -469,6 +515,33 @@ public class EventMode {
      */
     void removeAnotherChance(GridPane chanceGrid){
         ObservableList<Node> list = chanceGrid.getChildren();
+        if(list.size() > 2) {
+            list.remove(list.size() - 1);
+        }
+    }
+
+    GridPane createRestrictionArea(){
+        GridPane restrictionGrid = new GridPane();
+
+        restrictionGrid.setPadding(new Insets(0, 0, 20, 0));
+
+        Label desc = new Label("Restrictions:");
+        restrictionGrid.add(desc, 0, 0);
+
+        GridPane.setColumnSpan(restrictionGrid, 20);
+        return restrictionGrid;
+    }
+
+    void addAnotherRestriction(GridPane restrictionTextBoxGrid){
+        TextField restrictionBox = new TextField();
+        restrictionBox.setMaxWidth(100);
+        restrictionTextBoxGrid.add(restrictionBox, restrictionTextBoxGrid.getChildren().size()-1, 1);
+
+        eventController.choiceList.get(eventController.choiceList.size()-1).restrictionList.add(restrictionBox);
+    }
+
+    void removeRestrictionArea(GridPane restrictionGrid){
+        ObservableList<Node> list = restrictionGrid.getChildren();
         if(list.size() > 2) {
             list.remove(list.size() - 1);
         }
@@ -488,7 +561,7 @@ public class EventMode {
     }
 
     public GridPane[] addAnotherAction(){
-        controller.actionList.add(new ArrayList<>());
+        eventController.actionList.add(new ArrayList<>());
 
         GridPane actionGrid = new GridPane();
         GridPane labelGrid = new GridPane();
@@ -520,7 +593,7 @@ public class EventMode {
         ObservableList<Node> list = actionAreaGrid.getChildren();
         if(list.size() > 3) {
             list.remove(list.size() - 1);
-            controller.actionList.remove(controller.actionList.size()-1);
+            eventController.actionList.remove(eventController.actionList.size()-1);
             actionAreaCounter--;
         }
     }
@@ -530,7 +603,7 @@ public class EventMode {
         field.setMaxWidth(100);
         fieldGrid.add(field, fieldGrid.getChildren().size(), 0);
 
-        controller.actionList.get((int)fieldGrid.getUserData()).add(field);
+        eventController.actionList.get((int)fieldGrid.getUserData()).add(field);
 
         return field;
     }
@@ -538,14 +611,104 @@ public class EventMode {
     private void removeActionTextField(GridPane fieldGrid){
         ObservableList<Node> list = fieldGrid.getChildren();
         if(list.size() > 0) {
-            controller.actionList.get((int)fieldGrid.getUserData()).remove(list.size()-1);
+            eventController.actionList.get((int)fieldGrid.getUserData()).remove(list.size()-1);
             list.remove(list.size() - 1);
         }
     }
 
-    public static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
-        List<T> list = new ArrayList<T>(c);
-        java.util.Collections.sort(list);
-        return list;
-    }
+//    public GridPane[] setupRestrictionArea(){
+//        GridPane labelGrid = new GridPane();
+//
+//        Label label = new Label("Restrictions");
+//        Button lessButton = new Button("-");
+//        Button moreButton = new Button("+");
+//
+//        labelGrid.add(label, 0, 0);
+//        labelGrid.add(lessButton, 1, 0);
+//        labelGrid.add(moreButton, 2, 0);
+//
+//        moreButton.setOnAction(e -> addAnotherRestrictionArea());
+//        lessButton.setOnAction(e -> removeRestrictionArea());
+//
+//        restrictionGrid.add(labelGrid, 0, 0);
+//        restrictionGrid.add(restrictionsListGrid, 0, 1);
+//
+//        return new GridPane[]{labelGrid, restrictionsListGrid};
+//    }
+//
+//    /**
+//     * Adds another restriction area.
+//     * @return A GridPane array containing the restriction (main) restriction area grid, label grid, and parameter grid.
+//     */
+//    public GridPane[] addAnotherRestrictionArea(){
+//        eventController.restrictionList.add(new ArrayList<>());
+//
+//        GridPane restrictionAreaGrid = new GridPane(); //Holds both the labels and params grids
+//        GridPane labelGrid = new GridPane(); //Holds the 'restrictions' label label and +,- buttons
+//        GridPane restrictionParamsGrid = new GridPane(); //Holds all the individual restriction fields
+//
+//        restrictionParamsGrid.setUserData(restrictionAreaCounter); //Sets the counter as the data
+//
+//        Label label = new Label("Restriction:"); //The title
+//
+//        //The -,+ buttons for less, more.
+//        Button lessButton = new Button("-");
+//        Button moreButton = new Button("+");
+//
+//        //Add them to the label grid.
+//        labelGrid.add(label, 0, 0);
+//        labelGrid.add(lessButton, 1, 0);
+//        labelGrid.add(moreButton, 2, 0);
+//
+//        //Button actions for more/less
+//        moreButton.setOnAction(e -> addRestrictionField(restrictionParamsGrid));
+//        lessButton.setOnAction(e -> removeRestrictionField(restrictionParamsGrid));
+//
+//        //Add the label grid and restrictions grid to the sub params grid.
+//        restrictionAreaGrid.add(labelGrid, 0, 0);
+//        restrictionAreaGrid.add(restrictionParamsGrid, 0, 1);
+//
+//        //Add the params grid to the main restriction grid.
+//        restrictionsListGrid.add(restrictionAreaGrid, 0, ++restrictionAreaCounter, 99, 1);
+//
+//        return new GridPane[]{restrictionAreaGrid, labelGrid, restrictionParamsGrid};
+//    }
+//
+//    private void removeRestrictionArea(){
+//        ObservableList<Node> list = restrictionsListGrid.getChildren();
+//        if(list.size() > 0) {
+//            list.remove(list.size() - 1);
+//            eventController.restrictionList.remove(eventController.restrictionList.size()-1);
+//            restrictionAreaCounter--;
+//        }
+//    }
+//
+//    /**
+//     * Removes the last added restriction field from the params grid passed in.
+//     * @param restrictionParamsGrid The parameter grid to remove from.
+//     */
+//    public void removeRestrictionField(GridPane restrictionParamsGrid){
+//        ObservableList<Node> list = restrictionParamsGrid.getChildren();
+//        if(list.size() > 0){
+//            list.remove(list.size()-1);
+//            int pos = (int)(restrictionParamsGrid.getUserData());
+//            eventController.restrictionList.get(pos).remove(eventController.restrictionList.get(pos).size()-1);
+//        }
+//    }
+//
+//    /**
+//     * Adds another restriction field to the restriction paramater grid.
+//     * @param restrictionParamsGrid The GridPane to add to.
+//     * @return The TextField that was added.
+//     */
+//    public TextField addRestrictionField(GridPane restrictionParamsGrid){
+//        TextField field = new TextField();
+//        field.setMaxWidth(100f);
+//
+//        restrictionParamsGrid.add(field, restrictionParamsGrid.getChildrenUnmodifiable().size(), 0);
+//        int pos = (int)(restrictionParamsGrid.getUserData());
+//        eventController.restrictionList.get(pos).add(field);
+//
+//        return field;
+//    }
 }

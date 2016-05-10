@@ -20,6 +20,7 @@ public class ActivityController {
     public ComboBox<String> activityComboBox;
 
     public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
+    public ArrayList<TextField> restrictionList = new ArrayList<>();
 
     public HashMap<String, SearchActivityJSON> activityMap = new HashMap<>();
     HashMap<String, String> fileMap = new HashMap<>();
@@ -27,6 +28,11 @@ public class ActivityController {
     private ObjectMapper mapper = new ObjectMapper();
 
     private File currFile;
+
+    public void resetControllerLists(){
+        actionList = new ArrayList<>();
+        restrictionList = new ArrayList<>();
+    }
 
     public void loadAllJsonFiles(String path){
         File currPath = new File(new File(path).getAbsolutePath());
@@ -65,12 +71,16 @@ public class ActivityController {
         act.name = nameField.getText();
         act.buttonTitle = buttonTitleField.getText();
         act.description = descTextArea.getText();
+
         act.action = new ArrayList<>();
         for(ArrayList<TextField> list : actionList){
             ArrayList<String> paramList = new ArrayList<>();
             act.action.add(paramList);
             paramList.addAll(list.stream().map(TextField::getText).collect(Collectors.toList()));
         }
+
+        act.restrictions = new ArrayList<>();
+        act.restrictions.addAll(restrictionList.stream().map(TextField::getText).collect(Collectors.toList()));
 
         activityMap.put(act.name, act);
 
@@ -86,5 +96,6 @@ public class ActivityController {
         public String buttonTitle;
         public ArrayList<ArrayList<String>> action;
         public String description;
+        public ArrayList<String> restrictions;
     }
 }

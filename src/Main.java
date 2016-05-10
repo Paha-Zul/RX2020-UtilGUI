@@ -17,7 +17,7 @@ public class Main extends Application {
 
     GridPane actionAreaGrid = new GridPane();
 
-    Controller controller = new Controller();
+    EventController eventController = new EventController();
 
     public void resetGrids(){
         descGrid = new GridPane();

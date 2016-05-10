@@ -6,4 +6,5 @@ public class ChoiceLink{
     public TextField choiceText;
     public ArrayList<TextField> outcomeList = new ArrayList<>();
     public ArrayList<TextField> chanceList = new ArrayList<>();
+    public ArrayList<TextField> restrictionList = new ArrayList<>();
 }

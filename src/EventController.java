@@ -10,9 +10,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.stream.Collectors;
 
-public class Controller {
+public class EventController {
 
     HashMap<String, JsonEvent> eventMap = new HashMap<>();
     HashMap<String, String> fileMap = new HashMap<>();
@@ -28,6 +29,7 @@ public class Controller {
     public ArrayList<TextArea> descList = new ArrayList<>();
     public ArrayList<ChoiceLink> choiceList = new ArrayList<>();
     public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
+    public ArrayList<ArrayList<TextField>> restrictionList = new ArrayList<>();
 
     private File loadedFile;
 
@@ -67,7 +69,20 @@ public class Controller {
             }
         }
 
-        eventComboBox.setItems(FXCollections.observableArrayList(EventMode.asSortedList(eventMap.keySet())));
+        eventComboBox.setItems(FXCollections.observableArrayList(Helper.asSortedList(eventMap.keySet())));
+    }
+
+    /**
+     * Replaces the currently selected Event in the dropdown with the one currently on screen.
+     * This means that the selected one will be removed and the current one will be saved.
+     */
+    public void replace(){
+        if(!eventComboBox.getValue().isEmpty() && !nameTextField.getText().isEmpty() && !titleTextField.getText().isEmpty()) {
+            save();
+            eventMap.remove(eventComboBox.getValue());
+            writeToJson();
+            loadEventList(fileMap.get(fileComboBox.getValue()));
+        }
     }
 
     /**
@@ -78,6 +93,9 @@ public class Controller {
         event.root = isRoot.isSelected();
         event.title = titleTextField.getText();
         event.name = nameTextField.getText();
+
+        if(event.title.isEmpty() || event.name.isEmpty())
+            return;
 
         /*
          * Record all the descriptions. Only use child 3+
@@ -94,7 +112,7 @@ public class Controller {
         int i=0;
         ArrayList<ChoiceLink> choiceLinkList = this.choiceList;
 
-        //If the link is
+        //If the link is only 1 and contains empty text, make an empty array.
         if(choiceLinkList.size() == 1 && choiceLinkList.get(0).choiceText.getText().isEmpty())
             event.choices = new String[0];
         else{
@@ -103,6 +121,7 @@ public class Controller {
 
         for(ChoiceLink link : choiceLinkList){
             ArrayList<String> outcomes = new ArrayList<>();
+            ArrayList<String> restrictions = new ArrayList<>();
             ArrayList<Integer> chances = new ArrayList<>();
 
             if(event.choices.length > i)
@@ -113,19 +132,27 @@ public class Controller {
                     outcomes.add(outcomeField.getText());
             }
 
-            for(TextField chanceField : link.chanceList){
-                int value = 0;
-                try{
-                    value = Integer.parseInt(chanceField.getText());
-                }catch (NumberFormatException e){
+            if(!(link.chanceList.size() == 1 && link.chanceList.get(0).getText().isEmpty())) {
+                for (TextField chanceField : link.chanceList) {
+                    int value = 0;
+                    try {
+                        value = Integer.parseInt(chanceField.getText());
+                    } catch (NumberFormatException e) {
 //                    e.printStackTrace();
-                }
+                    }
 
-                chances.add(value);
+                    chances.add(value);
+                }
+            }
+
+            for(TextField restrictionField : link.restrictionList){
+                if(!restrictionField.getText().isEmpty())
+                    restrictions.add(restrictionField.getText());
             }
 
             event.outcomes.add(outcomes);
             event.chances.add(chances);
+            event.restrictions.add(restrictions);
 
             i++;
         }
@@ -144,8 +171,10 @@ public class Controller {
 
     public void writeToJson(){
         try {
+            List<JsonEvent> list = Helper.asSortedList(eventMap.values(), (e1, e2) -> e1.title.compareToIgnoreCase(e2.title));
+
             mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-            mapper.writerWithDefaultPrettyPrinter().writeValue(loadedFile, eventMap.values());
+            mapper.writerWithDefaultPrettyPrinter().writeValue(loadedFile, list);
 
 //            String jsonInString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(event);
         } catch (IOException e) {
@@ -160,6 +189,7 @@ public class Controller {
         public String[] choices;
         public ArrayList<ArrayList<String>> outcomes = new ArrayList<>();
         public ArrayList<ArrayList<Integer>> chances = new ArrayList<>();
+        public ArrayList<ArrayList<String>> restrictions = new ArrayList<>();
         public ArrayList<ArrayList<String>> resultingAction = new ArrayList<>();
     }
 }

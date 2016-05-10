@@ -17,8 +17,6 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
 /**
  * Created by Paha on 4/2/2016.
@@ -30,6 +28,9 @@ public class SearchActivityMode {
     GridPane actionAreaGrid = new GridPane();
     GridPane topGrid = new GridPane();
     GridPane bottomGrid = new GridPane();
+
+    GridPane restrictionGrid = new GridPane();
+    GridPane restrictionFieldGrid = new GridPane();
 
     int actionAreaCounter = 0;
 
@@ -77,7 +78,7 @@ public class SearchActivityMode {
 
         GridPane loadFileGrid = new GridPane();
         Label statusLabel = new Label("");
-        ObservableList<String> options = FXCollections.observableArrayList(asSortedList(controller.fileMap.keySet()));
+        ObservableList<String> options = FXCollections.observableArrayList(Helper.asSortedList(controller.fileMap.keySet()));
         ComboBox<String> fileDropList = new ComboBox<>(options);
         Button loadFileButton = new Button("Load File");
 
@@ -85,7 +86,7 @@ public class SearchActivityMode {
         loadFileGrid.add(loadFileButton, 1, 0);
         loadFileGrid.add(statusLabel, 2, 0);
 
-        ObservableList<String> list = FXCollections.observableArrayList(asSortedList(controller.activityMap.keySet()));
+        ObservableList<String> list = FXCollections.observableArrayList(Helper.asSortedList(controller.activityMap.keySet()));
         controller.activityComboBox = new ComboBox<>(list);
 
         buttonGrid.add(saveButton, 0, 0);
@@ -105,7 +106,7 @@ public class SearchActivityMode {
             boolean status = true;
             status = controller.loadSearchActivities(controller.fileMap.get(fileDropList.getValue()));
             if(status) {
-                controller.activityComboBox.setItems(FXCollections.observableArrayList(asSortedList(controller.activityMap.keySet())));
+                controller.activityComboBox.setItems(FXCollections.observableArrayList(Helper.asSortedList(controller.activityMap.keySet())));
                 statusLabel.setText("Loaded!");
             }else
                 statusLabel.setText("Wrong json file");
@@ -150,6 +151,9 @@ public class SearchActivityMode {
         bottomGrid.add(descLabel, 0, 7);
         bottomGrid.add(controller.descTextArea, 0, 8);
         bottomGrid.add(actionAreaGrid, 0, 9);
+        bottomGrid.add(restrictionGrid, 0, 10);
+
+        setupRestrictionArea();
 
         moreButton.setOnAction(e -> addAnotherAction());
         lessButton.setOnAction(e -> removeAction());
@@ -162,6 +166,8 @@ public class SearchActivityMode {
     void reset(){
         bottomGrid.getChildren().clear();
         actionAreaGrid = new GridPane();
+        restrictionGrid = new GridPane();
+        restrictionFieldGrid = new GridPane();
         actionAreaCounter = 0;
         addBottomGrid();
     }
@@ -170,7 +176,7 @@ public class SearchActivityMode {
         //We need to get the activity before we clear the GUI.
         ActivityController.SearchActivityJSON act = controller.activityMap.get(controller.activityComboBox.getValue());
 
-        controller.actionList = new ArrayList<>();
+        controller.resetControllerLists();
         reset();
 
         controller.nameField.setText(act.name);
@@ -181,6 +187,12 @@ public class SearchActivityMode {
             GridPane[] grids = addAnotherAction();
             for (String param : list) {
                 addAnotherActionTextField(grids[2]).setText(param);
+            }
+        }
+
+        if(act.restrictions != null) {
+            for (String res : act.restrictions) {
+                addRestrictionField().setText(res);
             }
         }
     }
@@ -233,17 +245,50 @@ public class SearchActivityMode {
         return field;
     }
 
+    public GridPane[] setupRestrictionArea(){
+        GridPane labelGrid = new GridPane();
+        restrictionFieldGrid = new GridPane();
+
+        Label label = new Label("Restrictions");
+        Button lessButton = new Button("-");
+        Button moreButton = new Button("+");
+
+        labelGrid.add(label, 0, 0);
+        labelGrid.add(lessButton, 1, 0);
+        labelGrid.add(moreButton, 2, 0);
+
+        moreButton.setOnAction(e -> addRestrictionField());
+        lessButton.setOnAction(e -> removeRestrictionField());
+
+        restrictionGrid.add(labelGrid, 0, 0);
+        restrictionGrid.add(restrictionFieldGrid, 0, 1);
+
+        return new GridPane[]{labelGrid, restrictionFieldGrid};
+    }
+
+    public TextField addRestrictionField(){
+        TextField field = new TextField();
+        field.setMaxWidth(100f);
+
+        restrictionFieldGrid.add(field, restrictionFieldGrid.getChildrenUnmodifiable().size(), 0);
+        controller.restrictionList.add(field);
+
+        return field;
+    }
+
+    public void removeRestrictionField(){
+        ObservableList<Node> list = restrictionFieldGrid.getChildren();
+        if(list.size() > 0){
+            list.remove(list.size()-1);
+            controller.restrictionList.remove(controller.restrictionList.size()-1);
+        }
+    }
+
     private void removeActionTextField(GridPane fieldGrid){
         ObservableList<Node> list = fieldGrid.getChildren();
         if(list.size() > 0) {
             controller.actionList.get((int)fieldGrid.getUserData()).remove(list.size()-1);
             list.remove(list.size() - 1);
         }
-    }
-
-    public static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
-        List<T> list = new ArrayList<T>(c);
-        java.util.Collections.sort(list);
-        return list;
     }
 }
