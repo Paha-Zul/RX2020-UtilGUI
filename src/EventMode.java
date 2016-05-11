@@ -368,6 +368,7 @@ public class EventMode {
 
         GridPane choiceBoxGrid = addChoiceBox();
         GridPane[] outcomeGrid = createOutcomeArea();
+        GridPane container = new GridPane();
 
         outcomeGrid[2].setUserData(choiceCounter++); //Set the user data of the chance grid
 
@@ -375,11 +376,14 @@ public class EventMode {
         addAnotherChance(outcomeGrid[2]); //Adds the first chance
         addOutcomeTextBox(outcomeGrid[1]); //Adds the first outcome
 
-        choiceListGrid.add(choiceBoxGrid, choiceCol, choiceRow++); //Add the choice text box
-        choiceListGrid.add(restrictionArea, 0, choiceRow++); //Add the restriction area
-        choiceListGrid.add(outcomeGrid[0], 0, choiceRow++); //Add the outcome area.
-        choiceListGrid.add(outcomeGrid[2], 0, choiceRow++); //Add the chances area.
+        container.add(choiceBoxGrid, 0, 0); //Add the choice text box
+        container.add(restrictionArea, 0, 1); //Add the restriction area
+        container.add(outcomeGrid[0], 0, 2); //Add the outcome area.
+        container.add(outcomeGrid[2], 0, 3); //Add the chances area.
         choiceCol=0;
+
+        container.setPadding(new Insets(0, 0, 20, 0));
+        choiceListGrid.add(container, 0, choiceRow++);
 
         return new GridPane[]{choiceBoxGrid, outcomeGrid[1], outcomeGrid[2], restrictionArea};
     }
@@ -387,14 +391,11 @@ public class EventMode {
     void removeChoiceArea(){
         ObservableList<Node> list = choiceListGrid.getChildren();
         list.remove(list.size() - 1);
-        list.remove(list.size() - 1);
-        list.remove(list.size() - 1);
-        list.remove(list.size() - 1);
 
         choiceCounter--;
 
         eventController.choiceList.remove(eventController.choiceList.size()-1);
-        choiceRow-=4;
+        choiceRow--;
     }
 
     /**
