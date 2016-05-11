@@ -263,21 +263,20 @@ public class EventMode {
             if(event.choices.length > i)
                 link.choiceText.setText(event.choices[i]);
 
+            if(event.restrictions.length > i)
+                link.restrictionText.setText(event.restrictions[i]);
+
             if(event.outcomes.size() >= i) {
                 for (int j = 0; j < event.outcomes.get(i).size(); j++) {
                     //This is because when the choice area is initially created, the first text fields are already created.
                     if(j != 0) {
                         addOutcomeTextBox(grids[1]);
                         addAnotherChance(grids[2]);
-                        addAnotherRestriction(grids[3]);
                     }
 
                     link.outcomeList.get(j).setText(event.outcomes.get(i).get(j));
                     if(event.chances.size() > 0)
                         link.chanceList.get(j).setText(event.chances.get(i).get(j).toString());
-
-                    if(event.restrictions.size() > j)
-                        link.restrictionList.get(j).setText(event.restrictions.get(i).get(j));
                 }
             }
         }
@@ -372,17 +371,17 @@ public class EventMode {
 
         outcomeGrid[2].setUserData(choiceCounter++); //Set the user data of the chance grid
 
+        GridPane restrictionArea = createRestrictionArea();
         addAnotherChance(outcomeGrid[2]); //Adds the first chance
         addOutcomeTextBox(outcomeGrid[1]); //Adds the first outcome
-        addAnotherRestriction(outcomeGrid[3]); //Adds the first restriction
 
         choiceListGrid.add(choiceBoxGrid, choiceCol, choiceRow++); //Add the choice text box
-        choiceListGrid.add(outcomeGrid[0], 0, choiceRow++); //Add the outcome area
+        choiceListGrid.add(restrictionArea, 0, choiceRow++); //Add the restriction area
+        choiceListGrid.add(outcomeGrid[0], 0, choiceRow++); //Add the outcome area.
         choiceListGrid.add(outcomeGrid[2], 0, choiceRow++); //Add the chances area.
-        choiceListGrid.add(outcomeGrid[3], 0, choiceRow++); //Add the restriction area.
         choiceCol=0;
 
-        return new GridPane[]{choiceBoxGrid, outcomeGrid[1], outcomeGrid[2], outcomeGrid[3]};
+        return new GridPane[]{choiceBoxGrid, outcomeGrid[1], outcomeGrid[2], restrictionArea};
     }
 
     void removeChoiceArea(){
@@ -390,11 +389,12 @@ public class EventMode {
         list.remove(list.size() - 1);
         list.remove(list.size() - 1);
         list.remove(list.size() - 1);
+        list.remove(list.size() - 1);
 
         choiceCounter--;
 
         eventController.choiceList.remove(eventController.choiceList.size()-1);
-        choiceRow-=3;
+        choiceRow-=4;
     }
 
     /**
@@ -428,7 +428,6 @@ public class EventMode {
         GridPane labelButtonGrid = new GridPane();
         GridPane outcomeTextBoxGrid = new GridPane();
         GridPane chancesGrid = createChancesArea();
-        GridPane restrictionGrid = createRestrictionArea();
 
         outcomeTextBoxGrid.setUserData(choiceCounter);
 
@@ -445,14 +444,12 @@ public class EventMode {
         addMoreButton.setOnAction((ActionEvent e) -> {
             addOutcomeTextBox(outcomeTextBoxGrid);
             addAnotherChance(chancesGrid);
-            addAnotherRestriction(restrictionGrid);
         });
 
         //Remove an outcome box and chance box.
         lessButton.setOnAction((ActionEvent e) -> {
             removeOutcomeTextBox(outcomeTextBoxGrid);
             removeAnotherChance(chancesGrid);
-            removeRestrictionArea(restrictionGrid);
         });
 
         outcomeGrid.add(labelButtonGrid, 0, 0);
@@ -460,7 +457,7 @@ public class EventMode {
 
         GridPane.setColumnSpan(outcomeGrid, 20);
 
-        return new GridPane[]{outcomeGrid, outcomeTextBoxGrid, chancesGrid, restrictionGrid};
+        return new GridPane[]{outcomeGrid, outcomeTextBoxGrid, chancesGrid};
     }
 
     /**
@@ -522,29 +519,19 @@ public class EventMode {
 
     GridPane createRestrictionArea(){
         GridPane restrictionGrid = new GridPane();
+        TextField restrictionBox = new TextField();
+        restrictionBox.setMaxWidth(100);
 
-        restrictionGrid.setPadding(new Insets(0, 0, 20, 0));
+        restrictionGrid.setPadding(new Insets(0, 0, 0, 0));
 
         Label desc = new Label("Restrictions:");
         restrictionGrid.add(desc, 0, 0);
+        restrictionGrid.add(restrictionBox, 0, 1);
+
+        eventController.choiceList.get(eventController.choiceList.size()-1).restrictionText = restrictionBox;
 
         GridPane.setColumnSpan(restrictionGrid, 20);
         return restrictionGrid;
-    }
-
-    void addAnotherRestriction(GridPane restrictionTextBoxGrid){
-        TextField restrictionBox = new TextField();
-        restrictionBox.setMaxWidth(100);
-        restrictionTextBoxGrid.add(restrictionBox, restrictionTextBoxGrid.getChildren().size()-1, 1);
-
-        eventController.choiceList.get(eventController.choiceList.size()-1).restrictionList.add(restrictionBox);
-    }
-
-    void removeRestrictionArea(GridPane restrictionGrid){
-        ObservableList<Node> list = restrictionGrid.getChildren();
-        if(list.size() > 2) {
-            list.remove(list.size() - 1);
-        }
     }
 
     void actionArea(){

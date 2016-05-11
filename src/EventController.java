@@ -113,19 +113,23 @@ public class EventController {
         ArrayList<ChoiceLink> choiceLinkList = this.choiceList;
 
         //If the link is only 1 and contains empty text, make an empty array.
-        if(choiceLinkList.size() == 1 && choiceLinkList.get(0).choiceText.getText().isEmpty())
+        if(choiceLinkList.size() == 1 && choiceLinkList.get(0).choiceText.getText().isEmpty()) {
             event.choices = new String[0];
-        else{
+            event.restrictions = new String[0];
+        }else{
             event.choices = new String[choiceLinkList.size()];
+            event.restrictions = new String[choiceLinkList.size()];
         }
 
         for(ChoiceLink link : choiceLinkList){
             ArrayList<String> outcomes = new ArrayList<>();
-            ArrayList<String> restrictions = new ArrayList<>();
             ArrayList<Integer> chances = new ArrayList<>();
 
             if(event.choices.length > i)
                 event.choices[i] = link.choiceText.getText();
+
+            if(event.restrictions.length > i)
+                event.restrictions[i] = link.restrictionText.getText();
 
             for(TextField outcomeField : link.outcomeList){
                 if(!outcomeField.getText().isEmpty())
@@ -145,14 +149,8 @@ public class EventController {
                 }
             }
 
-            for(TextField restrictionField : link.restrictionList){
-                if(!restrictionField.getText().isEmpty())
-                    restrictions.add(restrictionField.getText());
-            }
-
             event.outcomes.add(outcomes);
             event.chances.add(chances);
-            event.restrictions.add(restrictions);
 
             i++;
         }
@@ -187,9 +185,9 @@ public class EventController {
         public String title, name;
         public String[] description;
         public String[] choices;
+        public String[] restrictions;
         public ArrayList<ArrayList<String>> outcomes = new ArrayList<>();
         public ArrayList<ArrayList<Integer>> chances = new ArrayList<>();
-        public ArrayList<ArrayList<String>> restrictions = new ArrayList<>();
         public ArrayList<ArrayList<String>> resultingAction = new ArrayList<>();
     }
 }
