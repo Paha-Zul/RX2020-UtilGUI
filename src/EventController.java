@@ -21,25 +21,25 @@ public class EventController {
     private ObjectMapper mapper = new ObjectMapper();
     private JsonEvent event;
 
-    public ComboBox<String> eventComboBox, fileComboBox;
+    ComboBox<String> eventComboBox, fileComboBox;
 
-    public CheckBox isRoot;
-    public TextField titleTextField, nameTextField;
+    CheckBox isRoot;
+    TextField titleTextField, nameTextField;
 
-    public ArrayList<TextArea> descList = new ArrayList<>();
-    public ArrayList<ChoiceLink> choiceList = new ArrayList<>();
-    public ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
+    ArrayList<TextArea> descList = new ArrayList<>();
+    ArrayList<ChoiceLink> choiceList = new ArrayList<>();
+    ArrayList<ArrayList<TextField>> actionList = new ArrayList<>();
     public ArrayList<ArrayList<TextField>> restrictionList = new ArrayList<>();
 
     private File loadedFile;
 
-    public void reset(){
+    void reset(){
         descList = new ArrayList<>();
         choiceList = new ArrayList<>();
         actionList = new ArrayList<>();
     }
 
-    public void loadAllJsonFiles(String path){
+    void loadAllJsonFiles(String path){
         File currPath = new File(new File(path).getAbsolutePath());
 
         File[] list = currPath.listFiles();
@@ -55,7 +55,7 @@ public class EventController {
         }
     }
 
-    public void loadEventList(String fileName) {
+    void loadEventList(String fileName) {
         eventMap = new HashMap<>(); //Reset the event map.
         loadedFile = new File(fileName); //Set the loaded file.
 
@@ -76,7 +76,7 @@ public class EventController {
      * Replaces the currently selected Event in the dropdown with the one currently on screen.
      * This means that the selected one will be removed and the current one will be saved.
      */
-    public void replace(){
+    void replace(){
         if(!eventComboBox.getValue().isEmpty() && !nameTextField.getText().isEmpty() && !titleTextField.getText().isEmpty()) {
             save();
             eventMap.remove(eventComboBox.getValue());
@@ -88,7 +88,7 @@ public class EventController {
     /**
      *
      */
-    public void save(){
+    void save(){
         event = new JsonEvent();
         event.root = isRoot.isSelected();
         event.title = titleTextField.getText();
@@ -123,7 +123,7 @@ public class EventController {
 
         for(ChoiceLink link : choiceLinkList){
             ArrayList<String> outcomes = new ArrayList<>();
-            ArrayList<Integer> chances = new ArrayList<>();
+            ArrayList<Float> chances = new ArrayList<>();
 
             if(event.choices.length > i)
                 event.choices[i] = link.choiceText.getText();
@@ -138,9 +138,9 @@ public class EventController {
 
             if(!(link.chanceList.size() == 1 && link.chanceList.get(0).getText().isEmpty())) {
                 for (TextField chanceField : link.chanceList) {
-                    int value = 0;
+                    float value = 0;
                     try {
-                        value = Integer.parseInt(chanceField.getText());
+                        value = Float.parseFloat(chanceField.getText());
                     } catch (NumberFormatException e) {
 //                    e.printStackTrace();
                     }
@@ -167,11 +167,10 @@ public class EventController {
         eventMap.put(event.name, event);
     }
 
-    public void writeToJson(){
+    void writeToJson(){
         try {
             List<JsonEvent> list = Helper.asSortedList(eventMap.values(), (e1, e2) -> e1.title.compareToIgnoreCase(e2.title));
-
-            mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+           mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
             mapper.writerWithDefaultPrettyPrinter().writeValue(loadedFile, list);
 
 //            String jsonInString = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(event);
@@ -180,14 +179,14 @@ public class EventController {
         }
     }
 
-    static public class JsonEvent{
+    static class JsonEvent{
         public Boolean root = false;
         public String title, name;
-        public String[] description;
-        public String[] choices;
-        public String[] restrictions;
+        public String[] description = new String[0];
+        public String[] choices = new String[0];
+        public String[] restrictions = new String[0];
         public ArrayList<ArrayList<String>> outcomes = new ArrayList<>();
-        public ArrayList<ArrayList<Integer>> chances = new ArrayList<>();
+        public ArrayList<ArrayList<Float>> chances = new ArrayList<>();
         public ArrayList<ArrayList<String>> resultingAction = new ArrayList<>();
     }
 }
